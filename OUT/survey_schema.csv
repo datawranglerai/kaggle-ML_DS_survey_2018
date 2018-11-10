@@ -1,0 +1,51 @@
+"question_label","question_text","respondents","question_number"
+"Q1","What is your gender? - Selected Choice",23860,1
+"Q2","What is your age (# years)?",23860,2
+"Q3","In which country do you currently reside?",23860,3
+"Q4","What is the highest level of formal education that you have attained or plan to attain within the next 2 years?",23439,4
+"Q5","Which best describes your undergraduate major? - Selected Choice",22948,5
+"Q6","Select the title most similar to your current role (or most recent title if retired): - Selected Choice",22901,6
+"Q7","In what industry is your current employer/contract (or your most recent employer if retired)? - Selected Choice",21686,7
+"Q8","How many years of experience do you have in your current role?",21102,8
+"Q9","What is your current yearly compensation (approximate $USD)?",20186,9
+"Q10","Does your current employer incorporate machine learning methods into their business?",20670,10
+"Q11","Select any activities that make up an important part of your role at work: (Select all that apply) - Selected Choice",19518,11
+"Q12","What is the primary tool that you use at work or school to analyze data? (include text response) - Selected Choice",19199,12
+"Q13","Which of the following integrated development environments (IDE's) have you used at work or school in the last 5 years? (Select all that apply) - Selected Choice",19117,13
+"Q14","Which of the following hosted notebooks have you used at work or school in the last 5 years? (Select all that apply) - Selected Choice",18971,14
+"Q15","Which of the following cloud computing services have you used at work or school in the last 5 years? (Select all that apply) - Selected Choice",18864,15
+"Q16","What programming languages do you use on a regular basis? (Select all that apply) - Selected Choice",18828,16
+"Q17","What specific programming language do you use most often? - Selected Choice",15223,17
+"Q18","What programming language would you recommend an aspiring data scientist to learn first? - Selected Choice",18789,18
+"Q19","What machine learning frameworks have you used in the past 5 years? (Select all that apply) - Selected Choice",18697,19
+"Q20","Of the choices that you selected in the previous question, which ML library have you used the most? - Selected Choice",12990,20
+"Q21","What data visualization libraries or tools have you used in the past 5 years? (Select all that apply) - Selected Choice",18593,21
+"Q22","Of the choices that you selected in the previous question, which specific data visualization library or tool have you used the most? - Selected Choice",12185,22
+"Q23","Approximately what percent of your time at work or school is spent actively coding?",18548,23
+"Q24","How long have you been writing code to analyze data?",18534,24
+"Q25","For how many years have you used machine learning methods (at work or in school)?",18492,25
+"Q26","Do you consider yourself to be a data scientist?",18481,26
+"Q27","Which of the following cloud computing products have you used at work or school in the last 5 years (Select all that apply)? - Selected Choice",11060,27
+"Q28","Which of the following machine learning products have you used at work or school in the last 5 years? (Select all that apply) - Selected Choice",10887,28
+"Q29","Which of the following relational database products have you used at work or school in the last 5 years? (Select all that apply) - Selected Choice",10719,29
+"Q30","Which of the following big data and analytics products have you used at work or school in the last 5 years? (Select all that apply) - Selected Choice",9746,30
+"Q31","Which types of data do you currently interact with most often at work or school? (Select all that apply) - Selected Choice",16922,31
+"Q32","What is the type of data that you currently interact with most often at work or school? - Selected Choice",13879,32
+"Q33","Where do you find public datasets? (Select all that apply) - Selected Choice",16816,33
+"Q34","During a typical data science project at work or school, approximately what proportion of your time is devoted to the following? (Answers must add up to 100%) - Cleaning data",15938,34
+"Q35","What percentage of your current machine learning/data science training falls under each category? (Answers must add up to 100%) - Self-taught",15746,35
+"Q36","On which online platforms have you begun or completed data science courses? (Select all that apply) - Selected Choice",15672,36
+"Q37","On which online platform have you spent the most amount of time? - Selected Choice",9671,37
+"Q38","Who/what are your favorite media sources that report on data science topics? (Select all that apply) - Selected Choice",16338,38
+"Q39","How do you perceive the quality of online learning platforms and in-person bootcamps as compared to the quality of the education provided by traditional brick and mortar institutions? - Online learning platforms and MOOCs:",15980,39
+"Q40","Which better demonstrates expertise in data science: academic achievements or independent projects? - Your views:",15880,40
+"Q41","How do you perceive the importance of the following topics? - Fairness and bias in ML algorithms:",14937,41
+"Q42","What metrics do you or your organization use to determine whether or not your models were successful? (Select all that apply) - Selected Choice",13584,42
+"Q43","Approximately what percent of your data projects involved exploring unfair bias in the dataset and/or algorithm?",13120,43
+"Q44","What do you find most difficult about ensuring that your algorithms are fair and unbiased? (Select all that apply)",13344,44
+"Q45","In what circumstances would you explore model insights and interpret your model's predictions? (Select all that apply)",13653,45
+"Q46","Approximately what percent of your data projects involve exploring model insights?",13290,46
+"Q47","What methods do you prefer for explaining and/or interpreting decisions that are made by ML models? (Select all that apply) - Selected Choice",13418,47
+"Q48","Do you consider ML models to be ""black boxes"" with outputs that are difficult or impossible to explain?",13369,48
+"Q49","What tools and methods do you use to make your work easy to reproduce? (Select all that apply) - Selected Choice",12891,49
+"Q50","What barriers prevent you from making your work even easier to reuse and reproduce? (Select all that apply) - Selected Choice",12814,50

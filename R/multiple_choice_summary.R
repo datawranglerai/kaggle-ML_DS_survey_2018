@@ -26,10 +26,16 @@ for ( i in 1:nrow(survey_schema) ) {
                        matches(question),
                        na.rm = TRUE) %>%
                 group_by(response) %>%
-                summarize(count = n())
+                summarize(count = n()) %>%
+                arrange(desc(count))
         
 }
 
 names(mcq_data) <- paste(survey_schema$question_label, 
                          survey_schema$question_text,
                          sep = ": ")
+
+head(mcq_data)
+mcq_data$`Q9: What is your current yearly compensation (approximate $USD)?`
+
+saveRDS(mcq_data, file = "./OUT/mcq_summary.RDS")
