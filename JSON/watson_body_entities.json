@@ -1,0 +1,16 @@
+{
+        "text": "",
+        "features": {
+                "entities": {
+                        "limit": 100,
+                        "mentions": false,
+                        "sentiment": false,
+                        "emotion": false
+                }
+        },
+        "clean": true,
+        "fallback_to_raw": true,
+        "return_analyzed_text": false,
+        "language": "en",
+        "limit_text_characters": 1000000
+}

@@ -1,0 +1,43 @@
+{
+        "text": "",
+        "features": {
+                "concepts": {
+                        "limit": 10
+                },
+                "emotion": {
+                        "document": true,
+                        "targets": [
+                                
+                                ]
+                },
+                "entities": {
+                        "limit": 50,
+                        "mentions": false,
+                        "sentiment": true,
+                        "emotion": false
+                },
+                "keywords": {
+                        "limit": 50,
+                        "sentiment": false,
+                        "emotion": false
+                },
+                "relations": {},
+                "semantic_roles": {
+                        "limit": 50,
+                        "keywords": true,
+                        "entities": true
+                },
+                "sentiment": {
+                        "document": true,
+                        "targets": [
+                                
+                                ]
+                },
+                "categories": {}
+        },
+        "clean": true,
+        "fallback_to_raw": true,
+        "return_analyzed_text": true,
+        "language": "en",
+        "limit_text_characters": 100
+}
