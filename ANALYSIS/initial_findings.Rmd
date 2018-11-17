@@ -1,0 +1,111 @@
+---
+title: 'DS Survey: Initial Findings'
+author: "James R Wolman"
+date: "17/11/2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Load our libraries.
+
+```{r environment setup, message=FALSE}
+library(readr)
+library(tidyr)
+library(dplyr)
+library(stringr)
+library(jsonlite)
+```
+
+With packages loaded we can import the survey data.
+The survey schema contains the questions, the other the multiple choice responses.
+
+```{r import, message=FALSE}
+format_survey_schema <- function(x) {
+        #'
+        #' Formats the survey schema file for the 2018 Kaggle ML & DS Survey
+        #' Challenge into a tidy, analysis-friendly format.
+        #'
+        #' @param x Character. Path to Kaggle survey schema file.
+        #'
+        #' @return Dataframe. Number of respondents per question as well as
+        #' question text, sorted by question number.
+        #'
+        #' @references 
+        #' Kaggle competition overview: https://www.kaggle.com/kaggle/kaggle-survey-2018/home
+        #' Schema details: https://www.kaggle.com/kaggle/kaggle-survey-2018#SurveySchema.csv
+        #'
+
+        survey_schema_raw <- read_csv(x) %>%
+                select(starts_with("Q"))       # select question columns only
+        
+        survey_schema <- data_frame(
+                question_label  = colnames(survey_schema_raw),
+                question_text   = as.character(survey_schema_raw[1,]),
+                respondents     = as.numeric(survey_schema_raw[2,]),
+                question_number = as.numeric(sub("Q", "", question_label))
+        ) %>%
+                arrange(question_number)
+        
+        survey_schema
+        
+}
+
+survey_schema <- format_survey_schema("./DATA/kaggle-survey-2018/SurveySchema.csv")
+multiple_choice_responses <- read_csv("./DATA/kaggle-survey-2018/multipleChoiceResponses.csv")
+```
+
+## Tallying up results for each multiple choice question
+
+```{r mcq tally, message=FALSE}
+# Remove any columns with user-entered text
+cols <- colSums(mapply(grepl, ".* - Text$", multiple_choice_responses))
+responses_mcq <- multiple_choice_responses[, which(cols == 0)]
+
+## Tally up results for each question
+mcq_data <- vector("list", length = nrow(survey_schema))
+
+for ( i in 1:nrow(survey_schema) ) {
+        
+        question  <- survey_schema$question_label[i]
+        col_regex <- paste0("^", question, "(?:\\D.*)?$")
+        
+        cat("Processing question", question, "\n")
+        
+        # Summarize MCQ results for each question
+        mcq_data[[i]] <- responses_mcq %>%
+                filter(row_number() > 1) %>%  # remove question text row   
+                select(matches(col_regex)) %>%
+                gather(question, response,
+                       matches(question),
+                       na.rm = TRUE) %>%
+                group_by(response) %>%
+                summarize(count = n()) %>%
+                arrange(desc(count))
+        
+}
+
+names(mcq_data) <- paste(survey_schema$question_label, 
+                         survey_schema$question_text,
+                         sep = ": ")
+```
+
+## Theme 1: Bias
+
+```{r bias high level}
+
+# Q41: How do you perceive the importance of fairness and bias in ML algorithms?
+mcq_data[[41]]
+
+# Q43: What % of your DS projects involved exploring bias in the dataset/algorithm?
+mcq_data[[43]]
+
+# Q44: What's most difficult about ensuring your algorithms are fair and unbiased?
+mcq_data[[44]]
+
+
+
+```
+

@@ -1,0 +1,406 @@
+---
+title: 'DS Survey: Initial Findings'
+author: "James R Wolman"
+date: "17/11/2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r environment setup, message=FALSE}
+# Init
+library(readr)
+library(tidyr)
+library(dplyr)
+library(stringr)
+library(jsonlite)
+library(ggplot2)
+library(wesanderson)
+library(scales)
+```
+
+With packages loaded we can import the survey data.
+The survey schema contains the questions, the other the multiple choice responses.
+
+## Data Import
+
+```{r helper funs, message = FALSE, echo = FALSE}
+format_survey_schema <- function(x) {
+        #'
+        #' Formats the survey schema file for the 2018 Kaggle ML & DS Survey
+        #' Challenge into a tidy, analysis-friendly format.
+        #'
+        #' @param x Character. Path to Kaggle survey schema file.
+        #'
+        #' @return Dataframe. Number of respondents per question as well as
+        #' question text, sorted by question number.
+        #'
+        #' @references 
+        #' Kaggle competition overview: https://www.kaggle.com/kaggle/kaggle-survey-2018/home
+        #' Schema details: https://www.kaggle.com/kaggle/kaggle-survey-2018#SurveySchema.csv
+        #'
+
+        survey_schema_raw <- read_csv(x) %>%
+                select(starts_with("Q"))       # select question columns only
+        
+        survey_schema <- data_frame(
+                question_label  = colnames(survey_schema_raw),
+                question_text   = as.character(survey_schema_raw[1,]),
+                respondents     = as.numeric(survey_schema_raw[2,]),
+                question_number = as.numeric(sub("Q", "", question_label))
+        ) %>%
+                arrange(question_number)
+        
+        survey_schema
+        
+}
+
+decodeR <- function(x, map = map) {
+    #' Similar to SQL's decode and Excel's VLOOKUP formula, regex matches values
+    #' against a list of key-value pairs.
+    #' 
+    #' @param x A vector that will serve as the lookup
+    #' @param map A named vector/list of key/value pairs, can use regex
+    #' 
+    #' @return vector of matched values
+    #' 
+    #' @example 
+    #' df <- data.frame(id = 1:10, letter = LETTERS[1:10])
+    #' map <- c(
+    #' "A" = "Apple",
+    #' "B" = "Banana"
+    #' )
+    #' df$label <- decode_JW(df$letter, map)
+    #' 
+    #' @return vector of matched values
+    #' 
+    #' @export
+    
+    if (!is.vector(x)) stop("'x' must be a vector")
+    if (is.null(names(map))) stop("'map' must be a named list")
+    
+    for(i in seq_along(map)) {
+        targets <- which(grepl(unname(map)[[i]], x, ignore.case = TRUE, perl = TRUE))
+        x[targets] <- names(map)[[i]]
+    }
+    x
+}
+
+# Custom ggplot theme
+theme_jw <- function () { 
+        theme_minimal(base_size = 12, base_family = "Avenir") %+replace% 
+        theme(
+            panel.background  = element_blank(),
+            panel.grid.major.x = element_blank(),
+            panel.grid.major.y = element_blank(),
+            panel.grid.minor.x = element_blank(),
+            panel.grid.minor.y = element_blank(),
+            plot.background = element_rect(fill = "transparent", colour = "white"), 
+            plot.title = element_text(hjust = 0.5, face = "bold", margin = margin(t = 10, b = 10)),
+            axis.title.y = element_text(margin = margin(r = 10), angle = 90),
+            axis.title.x = element_text(margin = margin(t = 10)),
+            axis.line = element_line(colour = "#222222"),
+            axis.ticks = element_line(colour = "#222222"),
+            legend.background = element_rect(fill = "transparent", colour = NA),
+            legend.key = element_rect(fill = "transparent", colour = NA)
+        )
+}
+```
+
+
+```{r import, message=FALSE}
+# Read in dataset
+survey_schema <- format_survey_schema("./DATA/kaggle-survey-2018/SurveySchema.csv")
+multiple_choice_responses <- read_csv("./DATA/kaggle-survey-2018/multipleChoiceResponses.csv", progress = FALSE) %>%
+        filter(row_number() > 1) # remove question label row
+
+# Remove any columns with user-entered text
+cols <- colSums(mapply(grepl, ".* - Text$", multiple_choice_responses))
+responses_mcq <- multiple_choice_responses[, which(cols == 0)]
+```
+
+
+## Theme 1: Bias
+
+Discordant relationship between ideal and practice.
+
+Everybody says they want fair and unbiased models but nobody is putting in the 
+work.
+
+Those concerned with the big picture and telling the story are the roles principally
+concerned with bias. The Data Scientist falls just below average for technical 
+roles with time spent on bias.
+
+Why is this?
+
+A naivety around younger professionals?
+
+As we get older we place more importance on bias(?) but as most data scientists
+are between the ages of X and Y there's little work being done.
+
+We can see this reflected in students who have a lack of opinion on the topic
+
+Do the tools used by those combatting bias differ?
+
+Average age by role and how that affects bias
+
+### Q41: How do you perceive the importance of fairness and bias in ML algos?
+
+```{r importance of bias, message=TRUE, echo=FALSE}
+
+multiple_choice_responses %>%
+        group_by(Q41_Part_1) %>%
+        summarize(count = n()) %>%
+        na.omit() %>%
+        ggplot(aes(Q41_Part_1, count, fill = Q41_Part_1)) +
+        geom_bar(stat = "identity") +
+        scale_y_continuous(labels = comma) +
+        scale_fill_manual(values = wes_palette("Darjeeling1", 4)) +
+        labs(title = "Most think it's pretty important",
+             x = "Choice", y = "Responses") +
+        theme_jw() +
+        theme(
+                legend.position = "none"
+        )
+```
+
+This doesn't vary much between data scientists, students and other roles.
+
+The data does lean towards the issue being slightly more important to data scientists though.
+
+```{r important of bias for DS, message=TRUE, echo=FALSE}
+
+# Map roles to regex identifiers
+role_map <- c(
+        Student = "student",
+        `Data Scientist` = "scientist|data analyst"
+)
+
+multiple_choice_responses %>%
+        mutate(
+                role_grouped = decodeR(Q6, role_map),
+                role_grouped = if_else(role_grouped %in% names(role_map),
+                                       role_grouped,
+                                       "Other")
+                ) %>%
+        filter(row_number() > 1) %>%
+        group_by(role_grouped, Q41_Part_1) %>%
+        summarize(count = n()) %>%
+        na.omit() %>%
+        mutate(prop = count / sum(count, na.rm = TRUE)) %>%
+        ggplot(aes(Q41_Part_1, prop, fill = role_grouped)) +
+        scale_fill_manual(values = wes_palette("Darjeeling1"), 3) +
+        geom_bar(stat = "identity", colour = "white", position = "dodge") +
+        labs(title = "Consensus of opinion around the importance of bias",
+             x = "Choice",
+             y = "Group response rate") +
+        scale_y_continuous(labels = percent) +
+        theme_jw() +
+        theme(
+                legend.position = "top",
+                legend.title = element_blank()
+        )
+
+```
+
+Maybe we find age has something to do with it?
+
+Does the importance of bias and fairness change with age?
+
+```{r influence of age, message=FALSE, echo=FALSE}
+
+# Weighted average % of time worked on bias, split between technical and non-technical roles
+technical_roles <- c("Data Analyst", "Data Scientist", "Data Engineer",
+                     "DBA/Database Engineer", "Research Assistant", 
+                     "Research Scientist", "Software Engineer",
+                     "Statistician", "Student")
+
+avg_work_on_bias <- multiple_choice_responses %>%
+        filter(row_number() > 1) %>%
+        mutate(role_type = if_else(Q6 %in% technical_roles, "technical", "non-technical")) %>%
+        group_by(role_type, Q43) %>%
+        summarize(count = n()) %>%
+        na.omit() %>%
+        rowwise() %>%
+        mutate(
+                response_lo = as.numeric(head(unlist(strsplit(Q43, "-")), 1)),
+                response_hi = as.numeric(tail(unlist(strsplit(Q43, "-")), 1)),
+                midpoint    = (response_lo + response_hi) / 2
+                ) %>%
+        ungroup() %>%
+        group_by(role_type) %>%
+        summarize(avg_response = weighted.mean(midpoint, count))
+
+multiple_choice_responses %>%
+        filter(row_number() > 1) %>%
+        group_by(Q6, Q43) %>%
+        summarize(count = n()) %>%
+        na.omit() %>%
+        mutate(prop = count / sum(count, na.rm = TRUE)) %>%
+        rowwise() %>%
+        mutate(
+                response_lo = as.numeric(head(unlist(strsplit(Q43, "-")), 1)),
+                response_hi = as.numeric(tail(unlist(strsplit(Q43, "-")), 1)),
+                midpoint    = (response_lo + response_hi) / 2
+                ) %>%
+        ungroup() %>%
+        group_by(Q6) %>%
+        summarize(avg_response = weighted.mean(midpoint, count)) %>%
+        arrange(desc(avg_response)) %>%
+        ggplot(aes(
+                reorder(Q6, avg_response),
+                avg_response,
+                fill = ifelse(Q6 %in% technical_roles, "technical", "non-technical")
+                )) +
+        scale_fill_manual(values = wes_palette("Darjeeling1", 2)) +
+        geom_bar(stat = "identity", alpha = 0.7) +
+        geom_hline(yintercept = c(avg_work_on_bias$avg_response),
+                   colour = wes_palette("Darjeeling1", 2)[1:2],
+                   linetype = "dashed") +
+        labs(title = "Data Scientists slightly below average for technical roles",
+             y = "Avg % of time spent on bias",
+             x = "Role") +
+        coord_flip() +
+        theme_jw() +
+        theme(
+                legend.position = "top",
+                legend.title = element_blank(),
+                axis.text.y = element_text(size = 7)
+        )
+```
+
+### Age affects bias
+
+The average age of a data scientist
+
+
+```{r age vs bias, echo=FALSE, message=FALSE}
+
+# Summarize Data Scientist age ranges
+DS_ages <- multiple_choice_responses %>%
+        filter(Q6 == "Data Scientist") %>%
+        group_by(Q2) %>%
+        summarize(count = n()) 
+
+## Calculate weighted mean of age for use in plot
+avg_age <- DS_ages %>%
+        separate(Q2, into = c("age_lo", "age_hi"), sep = "-|\\+") %>%
+        mutate_at(vars(age_lo, age_hi), as.numeric) %>%
+        mutate(
+                midpoint = (age_lo + age_hi) / 2,
+                midpoint = ifelse(is.na(midpoint), age_lo + 5, midpoint)
+                ) %>%
+        summarize(avg_age = weighted.mean(midpoint, count, na.rm = TRUE)) %>%
+        pull(avg_age)
+
+# Average age of the data scientist
+DS_ages %>%
+        ggplot(aes(Q2, count, fill = count)) +
+        geom_bar(stat = "identity") +
+        scale_fill_gradientn(colours = wes_palette("Zissou1", 100, type = "continuous")) +
+        scale_y_continuous(labels = comma) +
+        labs(title = "Average age of a data scientist",
+             x = "Age band", 
+             y = "Responses") +
+        theme_jw() +
+        theme(
+                legend.position = "none"
+        )
+
+```
+
+Age affects how we see bias.
+
+There is naivety in youth.
+
+Data scientists paying the most attention to bias are the ones hardened by a lifetime of it.
+
+```{r something, echo=FALSE, message=FALSE}
+
+# Age vs. how important they consider bias
+multiple_choice_responses %>%
+        filter(Q6 == "Data Scientist") %>%
+        group_by(Q2, Q41_Part_1) %>%
+        summarize(count = n()) %>%
+        na.omit() %>%
+        mutate(prop = count / sum(count)) %>%
+        filter(!grepl("No opinion", Q41_Part_1)) %>%
+        ggplot(aes(Q2, count, fill = Q41_Part_1)) +
+        geom_bar(stat = "identity", position = "fill") +
+        scale_fill_manual(values = wes_palette("Darjeeling1", 3)) +
+        scale_y_continuous(labels = percent) +
+        labs(title = "Bias less important amongst biggest chunk of scientists",
+             x = "Age band",
+             y = "Response") +
+        coord_flip() +
+        theme_jw() +
+        theme(
+                legend.title = element_blank()
+        )
+
+# Q43: What % of your DS projects involved exploring bias in the dataset/algorithm?
+
+
+# Q44: What's most difficult about ensuring your algorithms are fair and unbiased?
+
+
+# Q48 about black boxes
+
+```
+
+Bias is inherent to life and social sciences because of the strong human component.
+
+It is from these disciplines that DS often learn about statistics, and hypothesis-led experimentation. They learn what a fair test and the rigorous standards for disproving a null hypothesis.
+
+It's a different way of thinking to the computer scientist who builds the modern world as opposed to merely studying it.
+
+Just as the data scientist is a multi-disciplinary unicorn never stemming from a single background so is the way forward.
+
+```{r educational exposure to bias, echo=FALSE, message=FALSE}
+importance_lvls <- c(NA,
+                     "No opinion; I do not know",
+                     "Not at all important",
+                     "Slightly important",
+                     "Very important")
+
+importance_lbls <- c("Didn't answer",
+                     "No opinion/don't know",
+                     "Not important",
+                     "Somewhat important",
+                     "Very important")
+
+multiple_choice_responses %>%
+        group_by(Q5, Q41_Part_1) %>%
+        summarize(count = n()) %>%
+        # Correct ordering of responses for plotting
+        mutate(Q41_Part_1 = factor(Q41_Part_1,
+                                   levels = importance_lvls,
+                                   labels = importance_lbls,
+                                   ordered = TRUE,
+                                   exclude = NULL)) %>%
+        group_by(Q5) %>%
+        # Want to order bar graph by number of people answering "very important"
+        mutate(pc_v_important = count[Q41_Part_1 == "Very important"] / sum(count, na.rm = TRUE)) %>%
+        filter(!is.na(Q5)) %>%
+        ggplot(aes(
+                x = reorder(Q5, pc_v_important),
+                count,
+                fill = Q41_Part_1)
+               ) +
+        geom_bar(stat = "identity", position = "fill") +
+        scale_fill_manual(values = wes_palette("Darjeeling1", 5)) +
+        scale_y_continuous(labels = percent) +
+        coord_flip() +
+        labs(title = "Life sciences imbues knowledge of bias,\nCS doesn't,\nand having no degree doesn't help",
+             x = "Major",
+             y = "Response rate") +
+        theme_jw() +
+        theme(
+                legend.position = "right",
+                legend.text = element_text(size = 6),
+                legend.title = element_blank(),
+                axis.text.y = element_text(size = 6)
+        )
+```
