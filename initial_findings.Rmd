@@ -19,6 +19,7 @@ library(jsonlite)
 library(ggplot2)
 library(wesanderson)
 library(scales)
+library(countrycode)
 ```
 
 With packages loaded we can import the survey data.
@@ -106,6 +107,77 @@ theme_jw <- function () {
             legend.background = element_rect(fill = "transparent", colour = NA),
             legend.key = element_rect(fill = "transparent", colour = NA)
         )
+}
+
+watson_calculate_nlu_units <- function(text, features) {
+        #'
+        #' Calculates the number of NLU units that will be used up in an API
+        #' request.
+        #' 
+        #' @param characters. Character. Text to be analysed.
+        #' @param features. Named list. Features being requested.
+        #'
+        #' @return Numeric. Number of NLU units to be used.
+        #'
+        #' @note 
+        #' NOTE: A NLU item is based on the number of data units enriched and
+        #' the number of enrichment features applied. A data unit is 10,000
+        #' characters or less. For example: extracting Entities and Sentiment
+        #' from 15,000 characters of text is (2 Data Units * 2
+        #' Enrichment Features) = 4 NLU Items. A custom model refers to an
+        #' annotation model developed with Watson Knowledge Studio.
+        #' 
+        #' @references 
+        #' NLU API: https://www.ibm.com/watson/services/natural-language-understanding/
+        #'
+        
+        data_units <- ceiling(nchar(text) / 10000)
+        enrichment_features <- length(parameters[["features"]])
+        
+        data_units * enrichment_features
+}
+
+watson_NLU_query <- function(text, parameters, api_key) {
+        #'
+        #' Passes text through IBM Watson's Natural Language Understanding API.
+        #'
+        #' @param text Character. Text to be analysed by the
+        #' @param parameters Named list. Parameters to be passed to the body of
+        #' the API request.
+        #'
+        #' @return Dataframe. Entities identified in the text.
+        #'
+        #' @references 
+        #' API documentation: https://console.bluemix.net/apidocs/natural-language-understanding#related-information
+        #'
+        
+        library(httr)
+        library(jsonlite)
+        
+        # Service anatomy
+        SERVICE_URL <- "https://gateway-fra.watsonplatform.net/natural-language-understanding/api"
+        METHOD      <- "/v1/analyze"
+        VERSION     <- "2018-03-16"
+        
+        parameters[["text"]] <- text
+        
+        cat("This request will use", watson_calculate_nlu_units(text, parameters), "NLU units\n")
+        
+        # Make API call
+        res <- POST(
+                url = paste0(SERVICE_URL, METHOD),
+                body = parameters,
+                encode = "json",
+                query = list(version = VERSION),
+                add_headers("Content-Type" = "application/json"),
+                authenticate("apikey", api_key)
+        )
+        
+        api_response <- content(res, "text")
+        api_response_parsed <- fromJSON(api_response, flatten = TRUE, simplifyDataFrame = TRUE)
+        
+        api_response_parsed$entities
+        
 }
 ```
 
@@ -403,4 +475,122 @@ multiple_choice_responses %>%
                 legend.title = element_blank(),
                 axis.text.y = element_text(size = 6)
         )
+```
+
+### Tools and the problems they use to deal with it
+
+What people find most difficult about keeping their algorithms fair and unbiased and the tools they use
+
+Firstly, what do they find most difficult?
+
+
+
+```{r difficult things about unbiased algos, echo=FALSE, message=FALSE}
+
+multiple_choice_responses %>%
+        select(starts_with("Q44")) %>%
+        filter(row_number() > 1) %>%
+        gather(question, response, everything()) %>%
+        na.omit() %>%
+        group_by(response) %>%
+        summarize(count = n()) %>%
+        ggplot(aes(reorder(response, count), count, fill = count)) +
+        geom_bar(stat = "identity") +
+        scale_fill_gradientn(colours = wes_palette("Zissou1", 100, type = "continuous")) +
+        coord_flip() +
+        labs(title = "Lack of good data is a problem",
+             x = "Choice",
+             y = "Responses") +
+        theme_jw() +
+        theme(
+                legend.position = "none",
+                axis.text.y = element_text(size = 5)
+        )
+
+```
+
+
+
+How do tools change across industry for people who spend a lot of time dealing with bias?
+
+The standard answers are equal for each bias demographic.
+
+### Cultural bias
+
+By country:
+
+```{r country bias, echo=FALSE, message=FALSE}
+
+country_importances <- multiple_choice_responses %>%
+        group_by(Q3, Q41_Part_1) %>% 
+        summarize(count = n()) %>%
+        
+        mutate(
+                Q41_Part_1 = factor(Q41_Part_1,
+                                   levels = importance_lvls,
+                                   labels = importance_lbls,
+                                   ordered = TRUE,
+                                   exclude = NULL)
+                ) %>%
+        # Want to order bar graph by number of people answering "very important"
+        mutate(pc_v_important = count[Q41_Part_1 == "Very important"] / sum(count, na.rm = TRUE)) %>%
+        na.omit()
+
+ggplot(country_importances, aes(reorder(Q3, pc_v_important), count, fill = Q41_Part_1)) +
+        geom_bar(stat = "identity", position = "fill") + 
+        scale_fill_manual(values = wes_palette("Cavalcanti1", 5, "discrete")) +
+        scale_y_continuous(labels = percent) +
+        labs(title = "Value of bias by country",
+             x = "Country",
+             y = "Response rate") +
+        coord_flip() +
+        guides(fill = guide_legend(reverse = TRUE)) +
+        theme_jw() +
+        theme(
+                legend.position = "top",
+                legend.title = element_blank(),
+                legend.text = element_text(size = 5),
+                axis.text.y = element_text(size = 4)
+        ) 
+
+```
+
+By continent:
+
+```{r continent bias, echo=FALSE, message=FALSE}
+continent_importances <- country_importances %>%
+        filter(
+                Q3 != "Other",
+                !grepl("^I do not", Q3)
+        ) %>%
+        mutate(
+                continent = countrycode(sourcevar = Q3,
+                                        origin = "country.name",
+                                        destination = "continent")
+        ) %>%
+        group_by(continent, Q41_Part_1) %>%
+        summarize(count = sum(count)) %>%
+        # Want to order bar graph by number of people answering "very important"
+        mutate(pc_v_important = sum(count[grepl("Very|Somewhat", Q41_Part_1)]) / sum(count, na.rm = TRUE))
+
+ggplot(continent_importances, aes(reorder(continent, pc_v_important), count, fill = Q41_Part_1)) +
+        geom_bar(stat = "identity", position = "fill") + 
+        scale_fill_manual(values = wes_palette("Cavalcanti1", 5, "discrete")) +
+        scale_y_continuous(labels = percent) +
+        coord_flip() +
+        guides(fill = guide_legend(reverse = TRUE)) +
+        theme_jw() +
+        theme(
+                legend.position = "top",
+                legend.title = element_blank(),
+                legend.text = element_text(size = 6),
+                axis.text.y = element_text(size = 5)
+        ) 
+
+```
+
+### Where do people get their informtion and how does that affect bias?
+
+```{r media sources, echo=FALSE, message=FALSE}
+
 ```

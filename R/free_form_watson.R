@@ -92,7 +92,7 @@ watson_NLU_query <- function(text, parameters, api_key) {
         
 }
 
-API_KEY <- "PdW3hpeF7RmNOqWoJZwZsm7TtY3nOLZKB96PX3UX4Gxr"
+API_KEY <- Sys.getenv("NLU_KEY")
 json <- fromJSON("./JSON/watson_body_entities.json") # parameters for entity request
 
 # QUESTION 38 ----
