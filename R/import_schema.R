@@ -26,6 +26,9 @@ format_survey_schema <- function(x) {
                 respondents     = as.numeric(survey_schema_raw[2,]),
                 question_number = as.numeric(sub("Q", "", question_label))
         ) %>%
+                mutate(
+                        question_text = str_match(question_text, "(^.*\\?).*$")[,2]
+                ) %>%
                 arrange(question_number)
         
         survey_schema
@@ -53,13 +56,17 @@ format_mcq_schema <- function(x) {
         
         mcq_schema <- data_frame(
                 question_label_detailed  = colnames(mcq_schema_raw),
-                question_text_detailed   = as.character(mcq_schema_raw[1,]),
+                choice                   = as.character(mcq_schema_raw[1,]),
                 question_label           = str_match(question_label_detailed, "(^Q\\d+).*")[,2]
         ) %>%
                 filter(!grepl("TEXT", question_label_detailed)) %>%
                 left_join(survey_schema, by = "question_label") %>%
-                mutate(question_text_detailed = str_match(question_text_detailed, ".*Selected Choice - (.*)$")[,2]) 
-                
+                mutate(
+                        choice = str_match(choice, ".*(?:Selected Choice)? - (.*)$")[,2],
+                        choice = gsub("Selected Choice", NA, choice),
+                        question_text = str_match(question_text, "(^.*[\\?:]).*$")[,2]
+                        ) 
+        
         mcq_schema
         
 }
